@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows;
@@ -75,7 +76,7 @@ namespace PngToCStyleByteArray
                 if (index % 26 == 0)
                     arrayString += "\n   ";
                 Color color = bitmapInfo.GetPixelColor(x, y);
-                arrayString += String.Format(" 0x{0:X}{1:X}{2:X}{3:X},", color.A, color.R, color.G, color.B);
+                arrayString += String.Format(" 0x{0:X2}{1:X2}{2:X2}{3:X2},", color.A, color.R, color.G, color.B);
             }
             arrayString += "\n};";
 
