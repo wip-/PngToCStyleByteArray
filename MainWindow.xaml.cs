@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -16,6 +17,7 @@ namespace PngToCStyleByteArray
 
         public MainWindow()
         {
+            //BatchMode();
             InitializeComponent();
         }
 
@@ -28,6 +30,47 @@ namespace PngToCStyleByteArray
             }
         }
 
+        // generate .h/.cpp
+        private void BatchMode()
+        {
+            String directory = @"F:\myDirectory";
+            String[] files = Directory.GetFiles(directory, "*.png");
+
+            Dictionary<String, List<String>> dictionary = new Dictionary<String, List<String>>();
+            foreach (string filename in files)
+            {
+                var name = Path.GetFileNameWithoutExtension(filename);
+                var i = name.IndexOf("_");
+                String prefix = (i==-1)? name : name.Substring(0, i);
+
+                if (!dictionary.ContainsKey(prefix))
+                    dictionary.Add(prefix, new List<String>());
+
+                dictionary[prefix].Add(filename);
+            }
+
+            using (StreamWriter headerFile = File.AppendText(directory + @"\header.h"))
+            {
+                foreach (String prefix in dictionary.Keys)
+                {
+                    using (StreamWriter sourceFile = File.AppendText(directory + @"\bitmap_" + prefix + ".cpp"))
+                    {
+                        foreach (String filename in dictionary[prefix])
+                        {
+                            Bitmap bitmap = new Bitmap(filename);
+                            String name = Path.GetFileNameWithoutExtension(filename);
+                            String array = BitmapToArray(bitmap, name);
+
+                            headerFile.WriteLine(String.Format("int {0}[];", name));
+                            sourceFile.WriteLine(array);
+                        }
+                    }
+                }
+            }
+        }
+
+
+        // sanity check
         private string ImageDrop_Sub(DragEventArgs e)
         {
             if (!e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -66,22 +109,26 @@ namespace PngToCStyleByteArray
                 return "Not an image!";
             }
 
+            return BitmapToArray(bitmap, Path.GetFileNameWithoutExtension(ImageSourceFileName));
+        }
+
+        private String BitmapToArray(Bitmap bitmap, String name)
+        {
             BitmapInfo bitmapInfo = new BitmapInfo(bitmap);
 
-            String arrayString = String.Format("int {0}[] =\n{{", Path.GetFileNameWithoutExtension(ImageSourceFileName));
+            String arrayString = String.Format("int {0}[] =\n{{", name);
             for (int y = 0; y < bitmapInfo.Height; ++y)
-            for (int x = 0; x < bitmapInfo.Width; ++x )
-            {
-                int index = bitmapInfo.Width * y + x;
-                if (index % 26 == 0)
-                    arrayString += "\n   ";
-                Color color = bitmapInfo.GetPixelColor(x, y);
-                arrayString += String.Format(" 0x{0:X2}{1:X2}{2:X2}{3:X2},", color.A, color.R, color.G, color.B);
-            }
+                for (int x = 0; x < bitmapInfo.Width; ++x)
+                {
+                    int index = bitmapInfo.Width * y + x;
+                    if (index % 32 == 0)
+                        arrayString += "\n   ";
+                    Color color = bitmapInfo.GetPixelColor(x, y);
+                    arrayString += String.Format(" 0x{0:X2}{1:X2}{2:X2}{3:X2},", color.R, color.G, color.B, color.A);
+                }
             arrayString += "\n};";
 
             return arrayString;
-
         }
 
         private void OnDragOver(object sender, DragEventArgs e)
